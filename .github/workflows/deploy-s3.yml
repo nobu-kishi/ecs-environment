@@ -1,0 +1,36 @@
+name: Deploy to S3
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "dev"
+      bucket_format:
+        description: "S3 bucket name format"
+        required: true
+        default: "%s-220511012178-ecs-environment"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::220511012178:role/dev-github-actions-role
+          aws-region: ap-northeast-1
+
+      - name: Deploy to S3
+        run: |
+          BUCKET=$(printf "${{ github.event.inputs.bucket_format }}" "${{ github.event.inputs.environment }}")
+          aws s3 sync ./env/${{ github.event.inputs.environment }} s3://$BUCKET --delete
